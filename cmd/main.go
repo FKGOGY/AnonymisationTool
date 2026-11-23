@@ -11,13 +11,14 @@ import (
 
 func main() {
 	// TEMP file handling
-	inPath := "iec104.pcapng"
-	outPath := "iec104_out.pcap"
+	inPath := "test_files/iec104.pcapng"
+	outPath := "test_files/iec104_out.pcap"
 	if len(os.Args) > 1 {
 		inPath = os.Args[1]
 	}
 
-	v := vault.NewVault()
+	// TODO take seed from configuration file or somewhere
+	v := vault.NewVault([]byte{0x01, 0x02, 0x03, 0x04, 0x05})
 
 	if err := pipeline.Run(inPath, outPath, v); err != nil {
 		log.Fatal(err)

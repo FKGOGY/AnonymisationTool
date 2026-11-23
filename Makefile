@@ -5,6 +5,9 @@ TARGET = anonymisationtool
 build:
 	go build -o $(TARGET) ./cmd/
 
+run:
+	./anonymisationtool
+
 test:
 	go test
 
