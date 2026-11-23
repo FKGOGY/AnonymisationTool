@@ -18,8 +18,10 @@ func main() {
 	}
 
 	// TODO take seed from configuration file or somewhere
-	v := vault.NewVault([]byte{0x01, 0x02, 0x03, 0x04, 0x05})
-
+	v, err := vault.NewVault([]byte{0x11, 0x22, 0x33, 0x44, 0x55, 0x66})
+	if err != nil {
+		log.Fatal(err)
+	}
 	if err := pipeline.Run(inPath, outPath, v); err != nil {
 		log.Fatal(err)
 	}
