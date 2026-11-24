@@ -2,8 +2,11 @@
 package main
 
 import (
+	"fmt"
 	"log"
 	"os"
+	"path/filepath"
+	"strings"
 	"time"
 
 	"github.com/AnonymisationTool/internal/pipeline"
@@ -11,17 +14,20 @@ import (
 )
 
 func main() {
-	// TEMP file handling
-	inPath := "test_files/iec104-extra.pcap"
-	outPath := "test_files/iec104-extra_out.pcap"
-	if len(os.Args) > 1 {
-		inPath = os.Args[1]
+	// TEMP arg and file handling
+	if len(os.Args) < 2 {
+		fmt.Fprintf(os.Stderr, "Usage: %s <input_file>\n", os.Args[0])
+		os.Exit(1)
 	}
 
-	// TODO take seed from configuration file or somewhere
+	inPath := os.Args[1]
+	ext := filepath.Ext(inPath)
+	outPath := strings.TrimSuffix(inPath, ext) + "_out" + ext
+
+	// TODO take these from a config file or somewhere
 	seed := []byte{0x11, 0x22, 0x33, 0x44, 0x55, 0x66}
-	dayShift := 300
-	location, err := time.LoadLocation("Europe/Prague")
+	dayShift := 970
+	location := time.UTC
 	v, err := vault.NewVault(seed, dayShift, location)
 	if err != nil {
 		log.Fatal(err)
