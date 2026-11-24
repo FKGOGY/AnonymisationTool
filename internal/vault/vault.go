@@ -112,24 +112,30 @@ var (
 
 func isSpecialMac(mac net.HardwareAddr) bool {
 	return bytes.Equal(mac, macBroadcast) ||
-		bytes.HasPrefix(mac, macPrefixIPv4Multicast) ||
 		bytes.HasPrefix(mac, macPrefixIPv6Multicast) ||
 		bytes.HasPrefix(mac, macPrefixGOOSE)
 }
 
-func (v *Vault) MapMAC(mac net.HardwareAddr) net.HardwareAddr {
+func isMulticastIPv4(mac net.HardwareAddr) bool {
+	return bytes.HasPrefix(mac, macPrefixIPv4Multicast)
+}
+
+func (v *Vault) MapMAC(mac net.HardwareAddr) (net.HardwareAddr, bool) {
 	// Check existing mapping
 	key := mac.String()
 	existing, ok := v.macMap[key]
 	if ok {
-		return existing
+		return existing, false
+	}
+
+	// Check IPv4 multicast, should be changed base on IPv4 address later
+	if isMulticastIPv4(mac) {
+		return mac, true
 	}
 
 	// Check special value
-	// TODO Multicast MAC is based on IP address so i should change it based on IP
-	// Could check if its MULTICAST right away and then later in IP just look and remap if necesary
 	if isSpecialMac(mac) {
-		return mac
+		return mac, false
 	}
 
 	h := hmac.New(sha256.New, v.seed) // Create hasher
@@ -145,12 +151,13 @@ func (v *Vault) MapMAC(mac net.HardwareAddr) net.HardwareAddr {
 		(mac[0] & 0x01) // Set I/G = previous
 
 	v.macMap[key] = out
-	return out
+	return out, false
 }
 
-// TODO
-func (v *Vault) remapMulticastMAC(mac net.HardwareAddr) net.HardwareAddr {
-	return mac
+// Creates new multicast mac address based on the IPv4
+func (v *Vault) RemapMulticastMAC(ip net.IP) net.HardwareAddr {
+	ip4 := ip.To4()
+	return net.HardwareAddr{0x01, 0x00, 0x5E, ip4[1] & 0x7F, ip4[2], ip4[3]}
 }
 
 func (v *Vault) ShiftTime(t time.Time) time.Time {

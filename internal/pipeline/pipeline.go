@@ -102,8 +102,10 @@ func rewritePacket(pkt gopacket.Packet, handlers []protocols.Handler, v *vault.V
 		return nil, nil
 	}
 	eth := ethLayer.(*layers.Ethernet)
-	eth.SrcMAC = v.MapMAC(eth.SrcMAC)
-	eth.DstMAC = v.MapMAC(eth.DstMAC)
+	//
+	var dstMulticast bool
+	eth.SrcMAC, _ = v.MapMAC(eth.SrcMAC)
+	eth.DstMAC, dstMulticast = v.MapMAC(eth.DstMAC)
 
 	outLayers := []gopacket.SerializableLayer{eth}
 
@@ -120,6 +122,10 @@ func rewritePacket(pkt gopacket.Packet, handlers []protocols.Handler, v *vault.V
 		ip4 := ipLayer.(*layers.IPv4)
 		ip4.SrcIP = v.MapIP(ip4.SrcIP)
 		ip4.DstIP = v.MapIP(ip4.DstIP)
+		// remap ips and if mac address was Multicast then change it so it coresponds
+		if dstMulticast {
+			eth.DstMAC = v.RemapMulticastMAC(ip4.DstIP)
+		}
 		netLayer = ip4
 		outLayers = append(outLayers, ip4)
 	} else if ip6Layer := pkt.Layer(layers.LayerTypeIPv6); ip6Layer != nil {
