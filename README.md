@@ -12,3 +12,4 @@ Currently, will change later
 make build
 ./anonymisationtool filename
 ```
+Does not alter input file, create new one and should skip all protocols that are not IEC104, GOOSE, MMS or DLMS.

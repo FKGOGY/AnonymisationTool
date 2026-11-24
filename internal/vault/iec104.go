@@ -20,7 +20,7 @@ func NewIEC104State() (*IEC104State, error) {
 	}
 
 	// Random offset for IOA
-	ioaOff := (binary.LittleEndian.Uint32(b[:]) % 0xFFFFFF) + 1
+	ioaOff := (binary.LittleEndian.Uint32(b[:]) % 0x7FFFFF) + 1
 
 	return &IEC104State{
 		orgMap:    make(map[uint8]uint8),
