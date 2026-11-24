@@ -13,15 +13,23 @@ import (
 )
 
 type Vault struct {
-	seed       []byte
-	timeOffset time.Duration
-	cpan       *cryptopan.Cryptopan
-	ipMap      map[string]net.IP
-	macMap     map[string]net.HardwareAddr
-	strMap     map[string]string // Just placeholder, will have separate maps probably
+	seed   []byte
+	cpan   *cryptopan.Cryptopan
+	ipMap  map[string]net.IP
+	macMap map[string]net.HardwareAddr
+	strMap map[string]string // Just placeholder, will have separate maps probably
+
+	// IEC 104
+	dayShift int
+	location *time.Location
+	iec104   *IEC104State
 }
 
-func NewVault(seed []byte) (*Vault, error) {
+func NewVault(seed []byte, dayShift int, location *time.Location) (*Vault, error) {
+	if location == nil {
+		location = time.UTC
+	}
+
 	// Crypto-PAn initialization, it needs 32 bit key
 	h := hmac.New(sha256.New, seed)
 	h.Write([]byte("crypto-pan"))
@@ -31,16 +39,35 @@ func NewVault(seed []byte) (*Vault, error) {
 		return nil, err
 	}
 
+	iec104State, err := NewIEC104State()
+	if err != nil {
+		return nil, err
+	}
+
 	vault := &Vault{
-		seed:       seed,
-		timeOffset: 300 * 24 * time.Hour, // Change the value later, just for testing
-		cpan:       cpan,
-		ipMap:      make(map[string]net.IP),
-		macMap:     make(map[string]net.HardwareAddr),
-		strMap:     make(map[string]string),
+		seed:     seed,
+		cpan:     cpan,
+		ipMap:    make(map[string]net.IP),
+		macMap:   make(map[string]net.HardwareAddr),
+		strMap:   make(map[string]string),
+		dayShift: dayShift,
+		location: location,
+		iec104:   iec104State,
 	}
 
 	return vault, nil
+}
+
+func (v *Vault) IEC104() *IEC104State {
+	return v.iec104
+}
+
+func (v *Vault) DayShift() int {
+	return v.dayShift
+
+}
+func (v *Vault) Location() *time.Location {
+	return v.location
 }
 
 // IPv4 Mapping
@@ -160,6 +187,7 @@ func (v *Vault) RemapMulticastMAC(ip net.IP) net.HardwareAddr {
 	return net.HardwareAddr{0x01, 0x00, 0x5E, ip4[1] & 0x7F, ip4[2], ip4[3]}
 }
 
+// Shift by whole days
 func (v *Vault) ShiftTime(t time.Time) time.Time {
-	return t.Add(v.timeOffset)
+	return t.In(v.location).AddDate(0, 0, v.dayShift).UTC()
 }

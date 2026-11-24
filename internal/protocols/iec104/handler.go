@@ -4,6 +4,7 @@ package iec104
 import (
 	"encoding/binary"
 	"errors"
+	"time"
 
 	"github.com/AnonymisationTool/internal/protocols"
 	"github.com/AnonymisationTool/internal/vault"
@@ -38,6 +39,9 @@ func (Handler) Anonymize(payload []byte, v *vault.Vault) ([]byte, error) {
 		return nil, err
 	}
 
+	state := v.IEC104()
+	ioaDelta := state.IOAOffset() // TODO is IOA that sensitive? And what if there are like 10 objects and in the middle we pass MAX_IOA
+
 	for _, fr := range frames {
 		if fr.ASDU == nil {
 			continue // S and U frames carry no ASDU identifiers
@@ -46,23 +50,23 @@ func (Handler) Anonymize(payload []byte, v *vault.Vault) ([]byte, error) {
 
 		// Originator Address (0 = unused)
 		if h.Originator != 0 {
-			out[h.OriginatorOffset] = uint8(1) // map
+			out[h.OriginatorOffset] = state.MapORG(h.Originator)
 		}
 
 		// Common Address (2 bytes)
-		anonCA := uint16(1) // map
+		anonCA := state.MapCOA(h.CommonAddr)
 		binary.LittleEndian.PutUint16(out[h.CommonAddrOffset:h.CommonAddrOffset+2], anonCA)
 
 		// Information Objects (3-byte IOA + optional 7-byte CP56Time2a)
 		for _, obj := range h.Objects {
 			if obj.IOAOffset >= 0 {
-				anonIOA := 1 // map
+				anonIOA := (obj.IOA + ioaDelta) & 0xFFFFFF
 				out[obj.IOAOffset] = byte(anonIOA)
 				out[obj.IOAOffset+1] = byte(anonIOA >> 8)
 				out[obj.IOAOffset+2] = byte(anonIOA >> 16)
 			}
 			if obj.TimeOffset >= 0 {
-				shiftCP56Time2a(out[obj.TimeOffset:obj.TimeOffset+7], v)
+				shiftCP56Time2a(out[obj.TimeOffset:obj.TimeOffset+7], v.DayShift(), v.Location())
 			}
 		}
 	}
@@ -70,6 +74,6 @@ func (Handler) Anonymize(payload []byte, v *vault.Vault) ([]byte, error) {
 	return out, nil
 }
 
-func shiftCP56Time2a(b []byte, v *vault.Vault) {
+func shiftCP56Time2a(b []byte, dayShift int, loc *time.Location) {
 	// TODO
 }
