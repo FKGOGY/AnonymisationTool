@@ -13,7 +13,7 @@ import (
 )
 
 type Vault struct {
-	seed   []byte
+	seed   [32]byte
 	cpan   *cryptopan.Cryptopan
 	ipMap  map[string]net.IP
 	macMap map[string]net.HardwareAddr
@@ -25,13 +25,13 @@ type Vault struct {
 	iec104   *IEC104State
 }
 
-func NewVault(seed []byte, dayShift int, location *time.Location) (*Vault, error) {
+func NewVault(seed [32]byte, dayShift int, location *time.Location) (*Vault, error) {
 	if location == nil {
 		location = time.UTC
 	}
 
 	// Crypto-PAn initialization, it needs 32 bit key
-	h := hmac.New(sha256.New, seed)
+	h := hmac.New(sha256.New, seed[:])
 	h.Write([]byte("crypto-pan"))
 
 	cpan, err := cryptopan.New(h.Sum(nil))
@@ -39,7 +39,7 @@ func NewVault(seed []byte, dayShift int, location *time.Location) (*Vault, error
 		return nil, err
 	}
 
-	iec104State, err := NewIEC104State()
+	iec104State, err := NewIEC104State(seed)
 	if err != nil {
 		return nil, err
 	}
@@ -165,9 +165,9 @@ func (v *Vault) MapMAC(mac net.HardwareAddr) (net.HardwareAddr, bool) {
 		return mac, false
 	}
 
-	h := hmac.New(sha256.New, v.seed) // Create hasher
-	h.Write(mac[:3])                  // Feed it OUI
-	sum := h.Sum(nil)                 // Create
+	h := hmac.New(sha256.New, v.seed[:]) // Create hasher
+	h.Write(mac[:3])                     // Feed it OUI
+	sum := h.Sum(nil)                    // Create
 
 	out := make(net.HardwareAddr, 6)
 	copy(out[:3], sum[:3]) // 24 bits from HMAC

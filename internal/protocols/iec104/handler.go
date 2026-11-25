@@ -40,7 +40,6 @@ func (Handler) Anonymize(payload []byte, v *vault.Vault) ([]byte, error) {
 	}
 
 	state := v.IEC104()
-	ioaDelta := state.IOAOffset()
 
 	for _, fr := range frames {
 		if fr.ASDU == nil {
@@ -60,7 +59,7 @@ func (Handler) Anonymize(payload []byte, v *vault.Vault) ([]byte, error) {
 		// Information Objects (3-byte IOA + optional 7-byte CP56Time2a)
 		for _, obj := range h.Objects {
 			if obj.IOAOffset >= 0 && obj.IOA != 0 {
-				anonIOA := (obj.IOA + ioaDelta) & 0xFFFFFF
+				anonIOA := state.MapIOA(obj.IOA)
 				out[obj.IOAOffset] = byte(anonIOA)
 				out[obj.IOAOffset+1] = byte(anonIOA >> 8)
 				out[obj.IOAOffset+2] = byte(anonIOA >> 16)

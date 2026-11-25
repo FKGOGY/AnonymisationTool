@@ -2,6 +2,7 @@
 package main
 
 import (
+	"crypto/rand"
 	"fmt"
 	"log"
 	"os"
@@ -25,7 +26,11 @@ func main() {
 	outPath := strings.TrimSuffix(inPath, ext) + "_out" + ext
 
 	// TODO take these from a config file or somewhere
-	seed := []byte{0x11, 0x22, 0x33, 0x44, 0x55, 0x66}
+	var seed [32]byte
+	if _, err := rand.Read(seed[:]); err != nil {
+		log.Fatal(err)
+	}
+
 	dayShift := 970
 	location := time.UTC
 	v, err := vault.NewVault(seed, dayShift, location)
