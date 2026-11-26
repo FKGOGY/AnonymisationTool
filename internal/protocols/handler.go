@@ -7,9 +7,6 @@ import (
 	"github.com/google/gopacket/layers"
 )
 
-// TODO: Move this to GOOSE file later
-const EtherTypeGOOSE layers.EthernetType = 0x88B8
-
 type Handler interface {
 	Name() string
 	Match(pkt gopacket.Packet) bool

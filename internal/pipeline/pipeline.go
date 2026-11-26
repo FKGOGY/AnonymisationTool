@@ -9,10 +9,17 @@ import (
 
 	"github.com/AnonymisationTool/internal/pcapio"
 	"github.com/AnonymisationTool/internal/protocols"
+	"github.com/AnonymisationTool/internal/protocols/goose"
 	"github.com/AnonymisationTool/internal/protocols/iec104"
 	"github.com/AnonymisationTool/internal/vault"
 	"github.com/google/gopacket"
 	"github.com/google/gopacket/layers"
+)
+
+// Move to separate protocol files later TODO
+const (
+	MMS_PORT  = 102
+	DLMS_PORT = 4059
 )
 
 func Run(inPath, outPath string, v *vault.Vault) error {
@@ -40,6 +47,7 @@ func Run(inPath, outPath string, v *vault.Vault) error {
 
 	handlers := []protocols.Handler{
 		iec104.Handler{},
+		goose.Handler{},
 		// Later add more handlers
 	}
 
@@ -76,17 +84,18 @@ func Run(inPath, outPath string, v *vault.Vault) error {
 
 // isTargetFlow keeps packets belonging to IEC 104, GOOSE, MMS, or DLMS,
 // including empty TCP handshake/ACK control packets on those ports.
+// TODO could do using match!
 func isTargetFlow(pkt gopacket.Packet) bool {
-	if dot1q, ok := pkt.Layer(layers.LayerTypeDot1Q).(*layers.Dot1Q); ok && dot1q.Type == protocols.EtherTypeGOOSE {
+	if dot1q, ok := pkt.Layer(layers.LayerTypeDot1Q).(*layers.Dot1Q); ok && dot1q.Type == goose.EtherTypeGOOSE {
 		return true
 	}
-	if eth, ok := pkt.Layer(layers.LayerTypeEthernet).(*layers.Ethernet); ok && eth.EthernetType == protocols.EtherTypeGOOSE {
+	if eth, ok := pkt.Layer(layers.LayerTypeEthernet).(*layers.Ethernet); ok && eth.EthernetType == goose.EtherTypeGOOSE {
 		return true
 	}
-	if protocols.TCPPort(pkt, iec104.Port) || protocols.TCPPort(pkt, 102) || protocols.TCPPort(pkt, 4059) {
+	if protocols.TCPPort(pkt, iec104.Port) || protocols.TCPPort(pkt, MMS_PORT) || protocols.TCPPort(pkt, DLMS_PORT) {
 		return true
 	}
-	if protocols.UDPPort(pkt, 4059) {
+	if protocols.UDPPort(pkt, DLMS_PORT) {
 		return true
 	}
 	return false
